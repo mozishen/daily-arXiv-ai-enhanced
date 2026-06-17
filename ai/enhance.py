@@ -167,7 +167,23 @@ def process_single_item(chain, item: Dict, language: str) -> Dict:
 
 def process_all_items(data: List[Dict], model_name: str, language: str, max_workers: int) -> List[Dict]:
     """并行处理所有数据项"""
-    llm = ChatOpenAI(model=model_name).with_structured_output(Structure, method="function_calling")
+    
+    # 对于 deepseek-v4-flash，需要禁用思考模式
+    if "flash" in model_name.lower():
+        # 使用标准方式，但添加 extra_body 参数禁用思考模式
+        llm = ChatOpenAI(
+            model=model_name,
+            model_kwargs={
+                "extra_body": {
+                    "thinking": {
+                        "type": "disabled"
+                    }
+                }
+            }
+        ).with_structured_output(Structure, method="function_calling")
+    else:
+        llm = ChatOpenAI(model=model_name).with_structured_output(Structure, method="function_calling")
+    
     print('Connect to:', model_name, file=sys.stderr)
     
     prompt_template = ChatPromptTemplate.from_messages([
@@ -176,6 +192,8 @@ def process_all_items(data: List[Dict], model_name: str, language: str, max_work
     ])
 
     chain = prompt_template | llm
+    
+    # ... 其余代码保持不变
     
     # 使用线程池并行处理
     processed_data = [None] * len(data)  # 预分配结果列表
